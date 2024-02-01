@@ -71,9 +71,6 @@ object schema_chemin_hdfs {
 
   val chemin_detaillee = "/dlk/osn/refined/Recharge/recharge_detaillee/year="+annee()+"/month="+moisPrecedent()
 
-  //val chemin_read_in_detail = "/dlk/osn/refined/Recharge/recharge_in_detail/year=2023/month=12"
-  //val chemin_read_detaillee = "/dlk/osn/refined/Recharge/recharge_detaillee/year=2023/month=12"
-
 
   val chemin_write_in_detail = "/warehouse/tablespace/external/hive/dfc_temp.db/reconciliation_recharge_in_zebra"
   val chemin_write_detaillee = "/warehouse/tablespace/external/hive/dfc_temp.db/recharge_in_zebra_agr"
