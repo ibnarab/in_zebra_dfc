@@ -176,12 +176,13 @@ object utils {
     val dfZebraAgg = agg_date_type_recharge(dfZebra, "ze")
 
     val dfJoin = dfInAgg.join(dfZebraAgg, Seq("year","month","day", "type_recharge"), "full")
-    val dfFinal = dfJoin
+    val dfNull = dfJoin.na.fill(0)
+    val dfFinal = dfNull
       .withColumn("ecart_cnt",
         when(col("in_cnt") >= col("ze_cnt"), col("in_cnt") - col("ze_cnt")).otherwise(-(col("ze_cnt") - col("in_cnt")) ))
       .withColumn("ecart_mnt",
         when(col("in_mnt") >= col("ze_mnt"), col("in_mnt") - col("ze_mnt")).otherwise(-(col("ze_mnt") - col("in_mnt")) ))
-    dfFinal.select("type_recharge", "ecart_cnt", "ecart_mnt", "in_cnt", "in_mnt", "ze_cnt", "ze_mnt", "year", "month", "day").orderBy("year", "month", "day", "type_recharge").na.fill(0)
+    dfFinal.select("type_recharge", "ecart_cnt", "ecart_mnt", "in_cnt", "in_mnt", "ze_cnt", "ze_mnt", "year", "month", "day").orderBy("year", "month", "day", "type_recharge")
   }
 
 

@@ -31,7 +31,7 @@ object read_write {
       .format("com.crealytics.spark.excel")
       .option("sheetName", "in_zebra")
       .option("header", "true")
-      .mode("append")
+      .mode("overwrite")
       .save(s"/dlk/osn/refined/reconciliation_recharge_in_zebra.$partMonth.xlsx")
   }
 

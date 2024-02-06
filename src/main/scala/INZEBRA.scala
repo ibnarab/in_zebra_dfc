@@ -1,4 +1,5 @@
-import fonctions.{read_write, schema_chemin_hdfs, utils, mail}
+import fonctions.{mail, read_write, schema_chemin_hdfs, utils}
+import org.apache.spark.sql.functions.col
 
 object INZEBRA {
 
@@ -29,7 +30,7 @@ object INZEBRA {
 
 
     val reconciliationRecharge = uniqueRowsWithSourceInDetail.union(uniqueRowsWithSourceDetaillee)
-    val reconciliationAggregee = utils.reconciliation_agregee(uniqueRowsWithoutSourceInDetail, uniqueRowsWithoutSourceDetaillee)
+    val reconciliationAggregee = utils.reconciliation_agregee(inDetailAddRenameColumns, detailleeAddRenameColumns)
 
 
 
@@ -41,6 +42,31 @@ object INZEBRA {
     val partitionmonth = mail.partitionMonth(args(0))
     read_write.writeMail(reconciliationAggregee, partitionmonth)
     mail.sendMail(partitionmonth)
+
+
+
+    /*inDetailAddRenameColumns.where(col("type_recharge")  === "Recharge Orange Money O&M").show()
+    detailleeAddRenameColumns.where(col("type_recharge")  === "Recharge Orange Money O&M").show()
+
+
+    uniqueRowsWithoutSourceInDetail.where(col("type_recharge")  === "Recharge Orange Money O&M").show()
+    uniqueRowsWithoutSourceDetaillee.where(col("type_recharge")  === "Recharge Orange Money O&M").show()
+
+
+    uniqueRowsWithSourceInDetail.where(col("type_recharge")  === "Recharge Orange Money O&M").show()
+    uniqueRowsWithSourceDetaillee.where(col("type_recharge")  === "Recharge Orange Money O&M").show()
+
+    inDetailAddRenameColumns.where(col("type_recharge")  === "Recharge Carte").show()
+    detailleeAddRenameColumns.where(col("type_recharge")  === "Recharge Carte").show()
+
+
+    uniqueRowsWithoutSourceInDetail.where(col("type_recharge")  === "Recharge Carte").show()
+    uniqueRowsWithoutSourceDetaillee.where(col("type_recharge")  === "Recharge Carte").show()
+
+
+    uniqueRowsWithSourceInDetail.where(col("type_recharge")  === "Recharge Carte").show()
+    uniqueRowsWithSourceDetaillee.where(col("type_recharge")  === "Recharge Carte").show()*/
+
 
 
   }
