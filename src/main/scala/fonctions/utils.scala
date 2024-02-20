@@ -6,6 +6,7 @@ import org.apache.spark.sql.functions._
 
 object utils {
 
+
     def filtre_recharge_in_detail(df: DataFrame) : DataFrame =  {
 
         df.where(
@@ -50,10 +51,12 @@ object utils {
 
       df
         //.withColumnRenamed("day"             ,   "date")
-        .withColumn("year"                       , substring(col("day"), 1, 4))
-        .withColumn("month"                      , substring(col("day"), 5, 2))
-        .withColumnRenamed("msisdn"          , "numero")
-        .withColumn(          "type_recharge"   ,
+        .withColumn("year_in"                       , substring(col("day"), 1, 4))
+        .withColumn("month_in"                      , substring(col("day"), 5, 2))
+        .withColumnRenamed("day"                , "day_in")
+        .withColumnRenamed("msisdn"          , "numero_in")
+        .withColumnRenamed("formule"          , "formule_in")
+        .withColumn(          "type_recharge_in"   ,
              when(col("canal_recharge")  === "Ca Credit OM" && col("channel_name") === "Rech_OM_O&M"                                                                             , lit("Recharge Orange Money O&M"))
             .when(col("canal_recharge")  === "Ca Credit OM" && col("channel_name") === "Webservices Recharge(Orange Money)"                                                      , lit("Recharge Orange Money S2S"))
             .when(col("canal_recharge")  === "Ca Credit OM" && col("channel_name") === "Rech_OM_Distri"                                                                          , lit("Recharge Orange Money Distri"))
@@ -64,7 +67,8 @@ object utils {
             .when(col("canal_recharge")  === "Ca Cartes"                                                                                                                                   , lit("Recharge Carte"))
             .otherwise(                                                                                                                                                                                lit( null))
         )
-        .withColumn("montant"                                                                                                                                                              , col("montant").cast("double"))
+        .withColumn("montant_in"                                                                                                                                                              , col("montant").cast("double"))
+        .withColumn("date_recharge_in"                                                                                                                                                        , col("datetime_event").cast("timestamp"))
         .drop(
           "channel_name"                ,
                     "channel_ca_recharge"         ,
@@ -77,16 +81,18 @@ object utils {
                     "zone_drv"                    ,
                     "zone_drvnew"                 ,
                     "zone_dvri"                   ,
-                    "zone_dvrinew"
+                    "zone_dvrinew"                ,
+                    "datetime_event"
         )
         .select(
-               "numero"                      ,
-              "type_recharge"               ,
-                    "formule"                     ,
-                    "montant"                     ,
-                    "year"                        ,
-                    "month"                       ,
-                     "day"
+           "date_recharge_in"               ,
+          "numero_in"                      ,
+                "type_recharge_in"               ,
+                "formule_in"                     ,
+                "montant_in"                     ,
+                "year_in"                        ,
+                "month_in"                       ,
+                "day_in"
         )
     }
 
@@ -95,10 +101,13 @@ object utils {
 
       df
         //.withColumnRenamed("day"                                , "date")
-        .withColumn("year"                       , substring(col("day"), 1, 4))
-        .withColumn("month"                      , substring(col("day"), 5, 2))
-        .withColumnRenamed("msisdn"                             , "numero")
-        .withColumn("type_recharge"                                ,
+        .withColumn("year_zebra"                       , substring(col("day"), 1, 4))
+        .withColumn("month_zebra"                      , substring(col("day"), 5, 2))
+        .withColumnRenamed("day"                      , "day_zebra")
+        .withColumnRenamed("msisdn"                             , "numero_zebra")
+        .withColumnRenamed("date_recharge"                              ,  "date_recharge_zebra")
+        .withColumnRenamed("montant_recharge"                   ,  "montant_zebra")
+        .withColumn("type_recharge_zebra"                                ,
           when(col("type_recharge")             === "M"            , lit("Recharge Orange Money O&M"))
             .when(col("type_recharge")          === "O"            , lit("Recharge Orange Money S2S"))
             .when(col("type_recharge")          === "D"            , lit("Recharge Orange Money Distri"))
@@ -109,35 +118,97 @@ object utils {
             .when(col("type_recharge")          === "C"            , lit("Recharge Carte"))
             .otherwise(                                                        lit( null))
         )
-        .withColumn("formule"                                      ,
+        .withColumn("formule_zebra"                                      ,
           regexp_replace(
             col("formule")                                         ,
                 "^(HYBRIDE-|POSTPAID-|PREPAID-)"                    ,
                 ""
           )
         )
-        .withColumnRenamed("montant_recharge"                   ,  "montant")
         .drop(
-          "date_recharge"                                          ,
-          "heure_recharge"                                                   ,
+          "heure_recharge"                                         ,
           "canal_recharge"                                                   ,
           "rech_carte_verte"                                                 ,
           "type_recharge_desc"
         )
         .select(
-          "numero"                                                     ,
-          "type_recharge"                                             ,
-                "formule"                                                    ,
-                "montant"                                                    ,
-                "year"                                                       ,
-                "month"                                                      ,
-                 "day"
+          "date_recharge_zebra"                                               ,
+          "numero_zebra"                                                     ,
+                "type_recharge_zebra"                                              ,
+                "formule_zebra"                                                    ,
+                "montant_zebra"                                                    ,
+                "year_zebra"                                                       ,
+                "month_zebra"                                                      ,
+                 "day_zebra"
         )
     }
 
 
+  def reconciliationINZEBRA(df_in: DataFrame, df_zebra: DataFrame): DataFrame = {
+    val df1 = df_in.join(df_zebra,
+      df_in("date_recharge_in") === df_zebra("date_recharge_zebra") &&
+      df_in("numero_in") === df_zebra("numero_zebra") &&
+        df_in("type_recharge_in") === df_zebra("type_recharge_zebra"),
+      "full")
 
-  def unique_rows_with_source(dataFrame: DataFrame, valeur: String): DataFrame = {
+    df1
+      .withColumn("date_recharge",
+      when(col("date_recharge_in") === col("date_recharge_zebra"), col("date_recharge_in"))
+        .otherwise(coalesce(col("date_recharge_in"), col("date_recharge_zebra"))))
+      .withColumn("numero",
+        when(col("numero_in") === col("numero_zebra"), col("numero_in"))
+          .otherwise(coalesce(col("numero_in"), col("numero_zebra"))))
+      .withColumn("type_recharge",
+        when(col("type_recharge_in") === col("type_recharge_zebra"), col("type_recharge_in"))
+          .otherwise(coalesce(col("type_recharge_in"), col("type_recharge_zebra"))))
+      .withColumn("formule",
+        when(col("formule_in") === col("formule_zebra"), col("formule_in"))
+          .otherwise(coalesce(col("formule_in"), col("formule_zebra"))))
+      .withColumn("year",
+        when(col("year_in") === col("year_zebra"), col("year_in"))
+          .otherwise(coalesce(col("year_in"), col("year_zebra"))))
+      .withColumn("month",
+        when(col("month_in") === col("month_zebra"), col("month_in"))
+          .otherwise(coalesce(col("month_in"), col("month_zebra"))))
+      .withColumn("day",
+        when(col("day_in") === col("day_zebra"), col("day_in"))
+          .otherwise(coalesce(col("day_in"), col("day_zebra"))))
+      .withColumn("ecart",
+        when(col("date_recharge_in") === col("date_recharge_zebra")
+          &&
+          col("numero_in") === col("numero_zebra")
+                      &&
+          col("type_recharge_in") === col("type_recharge_zebra")
+            &&
+          col("montant_in") =!= col("montant_zebra"),
+              lit("mismatch"))
+          .when(col("date_recharge_in").isNull
+            &&
+            col("numero_in").isNull
+            &&
+            col("type_recharge_in").isNull
+            ,
+            lit("missing_in"))
+          .when(col("date_recharge_zebra").isNull
+            &&
+            col("numero_zebra").isNull
+            &&
+            col("type_recharge_zebra").isNull
+            ,
+            lit("missing_zebra"))
+          .otherwise(null)
+
+
+        )
+      .drop("date_recharge_in", "date_recharge_zebra", "numero_in",
+        "numero_zebra", "type_recharge_in", "type_recharge_zebra", "formule_in", "formule_zebra", "year_in", "year_zebra",
+      "month_in", "month_zebra", "day_in", "day_zebra")
+      .select("date_recharge", "numero", "type_recharge", "formule", "montant_in", "montant_zebra", "ecart")
+  }
+
+
+
+  /*def unique_rows_with_source(dataFrame: DataFrame, valeur: String): DataFrame = {
 
       dataFrame.withColumn("source_in_zebra", lit(valeur)).select(
         "numero"          ,
@@ -183,7 +254,7 @@ object utils {
       .withColumn("ecart_mnt",
         when(col("in_mnt") >= col("ze_mnt"), col("in_mnt") - col("ze_mnt")).otherwise(-(col("ze_mnt") - col("in_mnt")) ))
     dfFinal.select("type_recharge", "ecart_cnt", "ecart_mnt", "in_cnt", "in_mnt", "ze_cnt", "ze_mnt", "year", "month", "day").orderBy("year", "month", "day", "type_recharge")
-  }
+  }*/
 
 
 

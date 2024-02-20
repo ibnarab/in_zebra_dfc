@@ -1,16 +1,21 @@
-import fonctions.{mail, read_write, schema_chemin_hdfs, utils}
+import fonctions.{mail, read_write, schema_chemin_hdfs, utils, constants}
 import org.apache.spark.sql.functions.col
-
+import org.apache.spark.sql.{DataFrame, SaveMode}
 object INZEBRA {
 
 
 
   def main(args: Array[String]): Unit = {
 
+    val debut = args(0)
+    val fin = args(1)
 
 
-    val rechargeInDetail        = read_write.readParquet_in_zebra(false, schema_chemin_hdfs.chemin_in_detail, schema_chemin_hdfs.schemaRechargeInDetailDF)
-    val rechargeDetaillee       = read_write.readParquet_in_zebra(false, schema_chemin_hdfs.chemin_detaillee, schema_chemin_hdfs.schemaRechargeDetaillee)
+
+
+
+    val rechargeInDetail        = read_write.readRechargeInDetail(schema_chemin_hdfs.table_read_in_detail, debut, fin)
+    val rechargeDetaillee       = read_write.readRechargeDetaillee(schema_chemin_hdfs.table_read_detaillee, debut, fin)
 
     val rechargeInDetailFiltre  = utils.filtre_recharge_in_detail(rechargeInDetail)
     val rechargeDetailleeFiltre = utils.filtre_recharge_detaillee(rechargeDetaillee)
@@ -18,8 +23,40 @@ object INZEBRA {
 
     val inDetailAddRenameColumns = utils.add_columns_and_rename_detail_in(rechargeInDetailFiltre)
     val detailleeAddRenameColumns = utils.add_columns_and_rename_detaillee(rechargeDetailleeFiltre)
+    val dfJoin = utils.reconciliationINZEBRA(inDetailAddRenameColumns, detailleeAddRenameColumns)
 
-    val uniqueRowsWithoutSourceInDetail = inDetailAddRenameColumns.except(detailleeAddRenameColumns)
+
+    /*println("-----------------Schema---------------------------")
+
+    inDetailAddRenameColumns.printSchema()
+    //rechargeInDetail.printSchema()
+    detailleeAddRenameColumns.printSchema()
+    dfJoin.printSchema()
+
+
+
+    println("----------------show-----------------------------")
+
+    inDetailAddRenameColumns.show(5, false)
+    //rechargeInDetail.show(5, false)
+    detailleeAddRenameColumns.show(5, false)*/
+
+    dfJoin.printSchema()
+    dfJoin.show(5, false)
+
+    /*dfJoin
+      .write
+      .mode(SaveMode.Overwrite)
+      .option("header", true)
+      .saveAsTable("dfc_temp.in_zebra_test")*/
+
+    println("debut = "+debut)
+    println("fin = "+fin)
+
+
+
+
+    /*val uniqueRowsWithoutSourceInDetail = inDetailAddRenameColumns.except(detailleeAddRenameColumns)
     val uniqueRowsWithoutSourceDetaillee = detailleeAddRenameColumns.except(inDetailAddRenameColumns)
 
 
@@ -45,7 +82,7 @@ object INZEBRA {
 
 
 
-    /*inDetailAddRenameColumns.where(col("type_recharge")  === "Recharge Orange Money O&M").show()
+    inDetailAddRenameColumns.where(col("type_recharge")  === "Recharge Orange Money O&M").show()
     detailleeAddRenameColumns.where(col("type_recharge")  === "Recharge Orange Money O&M").show()
 
 

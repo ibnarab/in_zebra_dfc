@@ -5,6 +5,22 @@ import org.apache.spark.sql.{DataFrame, SaveMode}
 import org.apache.spark.sql.types.StructType
 object read_write {
 
+  def readRechargeInDetail(table: String, debut: String, fin: String): DataFrame = {
+    spark.sql(
+      s"""
+        |SELECT * FROM $table
+        |WHERE day between'$debut' and '$fin'
+      """.stripMargin)
+  }
+
+  def readRechargeDetaillee(table: String, debut: String, fin: String): DataFrame = {
+    spark.sql(
+      s"""
+         |SELECT * FROM $table
+         |WHERE day between'$debut' and '$fin'
+      """.stripMargin)
+  }
+
   def readParquet_in_zebra(header: Boolean, chemin: String, schema: StructType) : DataFrame =  {
 
     spark.read

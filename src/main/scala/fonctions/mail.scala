@@ -32,8 +32,8 @@ object mail {
     val  corps = s"Bonjour , \nCi-joint les reportings :\n* Reconciliation Recharge par jour et par type de recharge.\n* reconciliation_recharge_in_zebra $partMonth \n\nCordialement, \nL'équipe DBM"
     println(corps)
 
-    //val RECEIVER = "mouhamedibnarab.diop@orange-sonatel.com,ndeyerokhaya.dia@orange-sonatel.com,mohamed.diene@orange-sonatel.com,ababacar.diouf@orange-sonatel.com,aminatamacky.tall@orange-sonatel.com"
-    val RECEIVER = "mouhamedibnarab.diop@orange-sonatel.com"
+    val RECEIVER = "mouhamedibnarab.diop@orange-sonatel.com,ndeyerokhaya.dia@orange-sonatel.com,mohamed.diene@orange-sonatel.com,ababacar.diouf@orange-sonatel.com,aminatamacky.tall@orange-sonatel.com"
+    //val RECEIVER = "mouhamedibnarab.diop@orange-sonatel.com"
     println(RECEIVER)
     val SENDER = "reconciliation_recharge_in_zebrag@orange-sonatel.com"
     println(SENDER)
