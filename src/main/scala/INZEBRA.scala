@@ -25,6 +25,8 @@ object INZEBRA {
     val detailleeAddRenameColumns = utils.add_columns_and_rename_detaillee(rechargeDetailleeFiltre)
     val dfJoin = utils.reconciliationINZEBRA(inDetailAddRenameColumns, detailleeAddRenameColumns)
 
+    val dfAgg = utils.reconciliationAgregee(dfJoin)
+
 
     /*println("-----------------Schema---------------------------")
 
@@ -41,14 +43,21 @@ object INZEBRA {
     //rechargeInDetail.show(5, false)
     detailleeAddRenameColumns.show(5, false)*/
 
-    dfJoin.printSchema()
-    dfJoin.show(5, false)
+    /*dfJoin.printSchema()
+    dfJoin.show(5, false)*/
 
-    /*dfJoin
+    dfJoin
       .write
       .mode(SaveMode.Overwrite)
       .option("header", true)
-      .saveAsTable("dfc_temp.in_zebra_test")*/
+      .saveAsTable("dfc_temp.in_zebra_test")
+
+    dfAgg
+      .write
+      .mode(SaveMode.Overwrite)
+      .option("header", true)
+      .saveAsTable("dfc_temp.in_zebra_agg_test")
+
 
     println("debut = "+debut)
     println("fin = "+fin)

@@ -151,7 +151,7 @@ object utils {
         df_in("type_recharge_in") === df_zebra("type_recharge_zebra"),
       "full")
 
-    df1
+    val df2 = df1
       .withColumn("date_recharge",
       when(col("date_recharge_in") === col("date_recharge_zebra"), col("date_recharge_in"))
         .otherwise(coalesce(col("date_recharge_in"), col("date_recharge_zebra"))))
@@ -197,13 +197,37 @@ object utils {
             ,
             lit("missing_zebra"))
           .otherwise(null)
-
-
         )
+      //.withColumn("year",   year(col("input")))
       .drop("date_recharge_in", "date_recharge_zebra", "numero_in",
         "numero_zebra", "type_recharge_in", "type_recharge_zebra", "formule_in", "formule_zebra", "year_in", "year_zebra",
       "month_in", "month_zebra", "day_in", "day_zebra")
+      .na.drop("any", Seq("ecart"))
       .select("date_recharge", "numero", "type_recharge", "formule", "montant_in", "montant_zebra", "ecart")
+
+    df2
+      .withColumn("year", year(col("date_recharge")).cast("String"))
+      .withColumn("month", format_string("%02d", month(col("date_recharge"))))
+      .withColumn("day", date_format(col("date_recharge"), "yyyyMMdd").cast("String"))
+
+  }
+
+
+
+  def reconciliationAgregee(dataFrame: DataFrame) : DataFrame = {
+
+    dataFrame
+      .groupBy("type_recharge", "year", "month", "day")
+      .agg(
+        count(when(col("ecart") === "mismatch", true)).alias("nombre_mismatch") ,
+        count(when(col("ecart") === "missing_in", true)).alias("nombre_missing_in") ,
+        count(when(col("ecart") === "missing_zebra", true)).alias("nombre_missing_zebra"),
+        sum(when(col("ecart").isin("mismatch", "missing_zebra"), col("montant_in")).otherwise(0)).alias("total_montant_in"),
+        sum(when(col("ecart").isin("mismatch", "missing_in"), col("montant_zebra")).otherwise(0)).alias("total_montant_zebra")
+      )
+      .drop("numero", "formule", "montant_in", "montant_zebra", "ecart")
+      .select("type_recharge", "total_montant_in", "total_montant_zebra", "nombre_mismatch", "nombre_missing_in", "nombre_missing_zebra", "year", "month", "day")
+      .orderBy("day", "year", "month", "day")
   }
 
 
