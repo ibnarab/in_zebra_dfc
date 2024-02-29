@@ -2,7 +2,6 @@ package fonctions
 
 import constants._
 import org.apache.spark.sql.{DataFrame, SaveMode}
-import org.apache.spark.sql.types.StructType
 object read_write {
 
   def readRechargeInDetail(table: String, debut: String, fin: String): DataFrame = {
@@ -21,23 +20,22 @@ object read_write {
       """.stripMargin)
   }
 
-  def readParquet_in_zebra(header: Boolean, chemin: String, schema: StructType) : DataFrame =  {
 
-    spark.read
-      .schema(schema)
-      .format("parquet")
-      .option("header", s"$header")
-      .load(s"$chemin")
+  def writeHiveInZebra(dataFrame: DataFrame, header: Boolean, table: String) : Unit =  {
+    dataFrame.repartition(1).write
+      .mode(SaveMode.Overwrite)
+      .partitionBy("year", "month", "day")
+      .option("header", header)
+      .saveAsTable(table)
+
   }
 
-
-  def writeHiveInZebra(dataFrame: DataFrame, header: Boolean, chemin: String, table: String) : Unit =  {
+  def writeHiveAgr(dataFrame: DataFrame, header: Boolean, table: String) : Unit =  {
     dataFrame.repartition(1).write
-      .mode(SaveMode.Append)
-      .partitionBy("year", "month", "day") // Spécifier les colonnes de partition
+      .mode(SaveMode.Overwrite)
       .option("header", header)
-      .option("path", chemin)
       .saveAsTable(table)
+
   }
 
   def writeMail(dataFrame: DataFrame, partMonth: String): Unit = {
@@ -47,7 +45,7 @@ object read_write {
       .format("com.crealytics.spark.excel")
       .option("sheetName", "in_zebra")
       .option("header", "true")
-      .mode("overwrite")
+      .mode("ignore")
       .save(s"/dlk/osn/refined/reconciliation_recharge_in_zebra.$partMonth.xlsx")
   }
 

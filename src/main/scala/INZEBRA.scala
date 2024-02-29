@@ -1,6 +1,5 @@
-import fonctions.{mail, read_write, schema_chemin_hdfs, utils, constants}
-import org.apache.spark.sql.functions.col
-import org.apache.spark.sql.{DataFrame, SaveMode}
+import fonctions.{mail, read_write, schema_chemin_hdfs, utils}
+import org.apache.spark.sql.SaveMode
 object INZEBRA {
 
 
@@ -9,7 +8,7 @@ object INZEBRA {
 
     val debut = args(0)
     val fin = args(1)
-
+    val partitionmonth = schema_chemin_hdfs.anneeMoisPrecedent()
 
 
 
@@ -23,95 +22,27 @@ object INZEBRA {
 
     val inDetailAddRenameColumns = utils.add_columns_and_rename_detail_in(rechargeInDetailFiltre)
     val detailleeAddRenameColumns = utils.add_columns_and_rename_detaillee(rechargeDetailleeFiltre)
-    val dfJoin = utils.reconciliationINZEBRA(inDetailAddRenameColumns, detailleeAddRenameColumns)
+    val dfJoin = utils.reconciliationJOIN(inDetailAddRenameColumns, detailleeAddRenameColumns)
+    val dfInZebra = utils.reconciliationInZebra(dfJoin)
 
     val dfAgg = utils.reconciliationAgregee(dfJoin)
 
 
-    /*println("-----------------Schema---------------------------")
+    read_write.writeHiveInZebra(dfInZebra, schema_chemin_hdfs.header, schema_chemin_hdfs.table_write_reconciliation)
 
-    inDetailAddRenameColumns.printSchema()
-    //rechargeInDetail.printSchema()
-    detailleeAddRenameColumns.printSchema()
-    dfJoin.printSchema()
+    read_write.writeHiveAgr(dfAgg, schema_chemin_hdfs.header, schema_chemin_hdfs.table_write_agr)
 
+    dfJoin.write.option("header", true).mode(SaveMode.Overwrite).saveAsTable("dfc_temp.joinTest")
 
 
-    println("----------------show-----------------------------")
 
-    inDetailAddRenameColumns.show(5, false)
-    //rechargeInDetail.show(5, false)
-    detailleeAddRenameColumns.show(5, false)*/
-
-    /*dfJoin.printSchema()
-    dfJoin.show(5, false)*/
-
-    dfJoin
-      .write
-      .mode(SaveMode.Overwrite)
-      .option("header", true)
-      .saveAsTable("dfc_temp.in_zebra_test")
-
-    dfAgg
-      .write
-      .mode(SaveMode.Overwrite)
-      .option("header", true)
-      .saveAsTable("dfc_temp.in_zebra_agg_test")
+    read_write.writeMail(dfAgg, partitionmonth)
+    mail.sendMail(partitionmonth)
 
 
     println("debut = "+debut)
     println("fin = "+fin)
-
-
-
-
-    /*val uniqueRowsWithoutSourceInDetail = inDetailAddRenameColumns.except(detailleeAddRenameColumns)
-    val uniqueRowsWithoutSourceDetaillee = detailleeAddRenameColumns.except(inDetailAddRenameColumns)
-
-
-    val uniqueRowsWithSourceInDetail = utils.unique_rows_with_source(uniqueRowsWithoutSourceInDetail, "IN")
-    val uniqueRowsWithSourceDetaillee = utils.unique_rows_with_source(uniqueRowsWithoutSourceDetaillee, "ZEBRA")
-
-
-
-
-    val reconciliationRecharge = uniqueRowsWithSourceInDetail.union(uniqueRowsWithSourceDetaillee)
-    val reconciliationAggregee = utils.reconciliation_agregee(inDetailAddRenameColumns, detailleeAddRenameColumns)
-
-
-
-    read_write.writeHiveInZebra(reconciliationRecharge, true, schema_chemin_hdfs.chemin_write_in_detail, schema_chemin_hdfs.table_write_in_detail)
-    read_write.writeHiveInZebra(reconciliationAggregee, true, schema_chemin_hdfs.chemin_write_detaillee, schema_chemin_hdfs.table_write_detaillee)
-
-
-
-    val partitionmonth = mail.partitionMonth(args(0))
-    read_write.writeMail(reconciliationAggregee, partitionmonth)
-    mail.sendMail(partitionmonth)
-
-
-
-    inDetailAddRenameColumns.where(col("type_recharge")  === "Recharge Orange Money O&M").show()
-    detailleeAddRenameColumns.where(col("type_recharge")  === "Recharge Orange Money O&M").show()
-
-
-    uniqueRowsWithoutSourceInDetail.where(col("type_recharge")  === "Recharge Orange Money O&M").show()
-    uniqueRowsWithoutSourceDetaillee.where(col("type_recharge")  === "Recharge Orange Money O&M").show()
-
-
-    uniqueRowsWithSourceInDetail.where(col("type_recharge")  === "Recharge Orange Money O&M").show()
-    uniqueRowsWithSourceDetaillee.where(col("type_recharge")  === "Recharge Orange Money O&M").show()
-
-    inDetailAddRenameColumns.where(col("type_recharge")  === "Recharge Carte").show()
-    detailleeAddRenameColumns.where(col("type_recharge")  === "Recharge Carte").show()
-
-
-    uniqueRowsWithoutSourceInDetail.where(col("type_recharge")  === "Recharge Carte").show()
-    uniqueRowsWithoutSourceDetaillee.where(col("type_recharge")  === "Recharge Carte").show()
-
-
-    uniqueRowsWithSourceInDetail.where(col("type_recharge")  === "Recharge Carte").show()
-    uniqueRowsWithSourceDetaillee.where(col("type_recharge")  === "Recharge Carte").show()*/
+    println("PartitionMonth = "+partitionmonth)
 
 
 
