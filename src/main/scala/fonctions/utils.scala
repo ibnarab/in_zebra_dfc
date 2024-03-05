@@ -3,6 +3,9 @@ package fonctions
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions.{size, _}
 import org.apache.spark.sql.expressions.Window
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import scala.collection.mutable.ListBuffer
 
 
 
@@ -264,43 +267,47 @@ object utils {
   }
 
 
+
   def reconciliationAgregee(dataFrame: DataFrame): DataFrame = {
 
-    val df1 = dataFrame
-      .groupBy("type_recharge", "year", "month", "day")
-      .agg(
-        count(when(col("ecart") === "match", true)).alias("nombre_match"),
-        count(when(col("ecart") === "mismatch", true)).alias("nombre_mismatch"),
-        count(when(col("ecart") === "missing_in", true)).alias("nombre_missing_in"),
-        count(when(col("ecart") === "missing_zebra", true)).alias("nombre_missing_zebra"),
-        sum(when(col("ecart").isin("match", "mismatch", "missing_zebra"), col("montant_in")).otherwise(0)).alias("in_mnt"),
-        sum(when(col("ecart").isin("match", "mismatch", "missing_in"), col("montant_zebra")).otherwise(0)).alias("ze_mnt"),
-        count(when(col("ecart").isin("match", "mismatch", "missing_zebra"), true)).alias("in_cnt"),
-        count(when(col("ecart").isin("match", "mismatch", "missing_in"), true)).alias("ze_cnt")
-      )
-      .drop("numero", "formule", "montant_in", "montant_zebra", "ecart")
+        val df1 = dataFrame
+            .groupBy("type_recharge", "year", "month", "day")
+            .agg(
+                  count(when(col("ecart") === "match", true)).alias("nombre_match"),
+                  count(when(col("ecart") === "mismatch", true)).alias("nombre_mismatch"),
+                  count(when(col("ecart") === "missing_in", true)).alias("nombre_missing_in"),
+                  count(when(col("ecart") === "missing_zebra", true)).alias("nombre_missing_zebra"),
+                  sum(when(col("ecart").isin("match", "mismatch", "missing_zebra"), col("montant_in")).otherwise(0)).alias("in_mnt"),
+                  sum(when(col("ecart").isin("match", "mismatch", "missing_in"), col("montant_zebra")).otherwise(0)).alias("ze_mnt"),
+                  count(when(col("ecart").isin("match", "mismatch", "missing_zebra"), true)).alias("in_cnt"),
+                  count(when(col("ecart").isin("match", "mismatch", "missing_in"), true)).alias("ze_cnt")
+            )
+            .drop("numero", "formule", "montant_in", "montant_zebra", "ecart")
+
+        df1
+          .withColumn("ecart_cnt",
+            when(col("in_cnt") >= col("ze_cnt"), col("in_cnt") - col("ze_cnt")).otherwise(-(col("ze_cnt") - col("in_cnt"))))
+          .withColumn("ecart_mnt",
+            when(col("in_mnt") >= col("ze_mnt"), col("in_mnt") - col("ze_mnt")).otherwise(-(col("ze_mnt") - col("in_mnt"))))
+          .withColumn("perc_match",
+            ((col("nombre_match") / col("in_cnt")) * 100)
+          )
+          .withColumn("perc_mismatch",
+            ((col("nombre_mismatch") / col("in_cnt")) * 100)
+          )
+          .withColumn("perc_in",
+            ((col("nombre_missing_in") / col("in_cnt")) * 100)
+          )
+          .withColumn("perc_ze",
+            ((col("nombre_missing_zebra") / col("in_cnt")) * 100)
+          )
+          .select("type_recharge", "in_mnt", "ze_mnt", "ecart_mnt", "in_cnt", "ze_cnt", "ecart_cnt",
+            "nombre_match", "perc_match", "nombre_mismatch", "perc_mismatch", "nombre_missing_in", "perc_in", "nombre_missing_zebra", "perc_ze", "year", "month", "day")
+          .na.drop(Seq("year", "month", "day"))
+          .orderBy("year", "month", "day")
+      }
 
 
-    df1
-      .withColumn("ecart_cnt",
-        when(col("in_cnt") >= col("ze_cnt"), col("in_cnt") - col("ze_cnt")).otherwise(-(col("ze_cnt") - col("in_cnt"))))
-      .withColumn("ecart_mnt",
-        when(col("in_mnt") >= col("ze_mnt"), col("in_mnt") - col("ze_mnt")).otherwise(-(col("ze_mnt") - col("in_mnt"))))
-      .withColumn("perc_match",
-        ((col("nombre_match") / col("in_cnt")) * 100)
-      )
-      .withColumn("perc_mismatch",
-        ((col("nombre_mismatch") / col("in_cnt")) * 100)
-      )
-      .withColumn("perc_in",
-        ((col("nombre_missing_in") / col("in_cnt")) * 100)
-      )
-      .withColumn("perc_ze",
-        ((col("nombre_missing_zebra") / col("in_cnt")) * 100)
-      )
-      .select("type_recharge", "in_mnt", "ze_mnt", "ecart_mnt", "in_cnt", "ze_cnt", "ecart_cnt",
-        "nombre_match", "perc_match", "nombre_mismatch", "perc_mismatch", "nombre_missing_in", "perc_in", "nombre_missing_zebra", "perc_ze", "year", "month", "day")
-      .orderBy("year", "month", "day")
-  }
+
 
 }
