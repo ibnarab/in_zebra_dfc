@@ -1,11 +1,11 @@
 package fonctions
 
 import org.apache.spark.sql.DataFrame
-import org.apache.spark.sql.functions.{size, _}
 import org.apache.spark.sql.expressions.Window
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-import scala.collection.mutable.ListBuffer
+import constants.spark
+import org.apache.spark.sql.functions.{sequence, explode, lit, date_format, year, month, expr, size, col, _}
+import java.sql.Date
+import java.text.SimpleDateFormat
 
 
 
@@ -268,7 +268,32 @@ object utils {
 
 
 
-  def reconciliationAgregee(dataFrame: DataFrame): DataFrame = {
+  def reconciliationAgregee(dataFrame: DataFrame, debut: String, fin: String): DataFrame = {
+
+        // Convertir les chaînes de date en objets Date
+        val dateFormat = new SimpleDateFormat("yyyyMMdd")
+        val debutStr = debut
+        val finStr = fin
+        val date_debut = new Date(dateFormat.parse(debutStr).getTime())
+        val date_fin = new Date(dateFormat.parse(finStr).getTime())
+
+
+
+
+        val toutesLesDates = spark.range(1).select(sequence(lit(date_debut), lit(date_fin), expr("INTERVAL 1 DAY")).as("dates"))
+        val explodedDates = toutesLesDates.select(explode(col("dates")).as("day"))
+
+        // Liste des types de recharge
+        val recharges = List("Recharge Orange Money Distri", "Recharge IAH", "Recharge Orange Money O&M", "Recharge Orange Money S2S", "Recharge Wave", "Recharge C2S", "Recharge Carte", "Seddo Corporate")
+
+        // Créer un DataFrame pour les types de recharge avec un identifiant
+        val rechargesDF = spark.createDataFrame(recharges.zipWithIndex).toDF("type_recharge", "recharge_id")
+
+        // Joindre chaque date avec chaque type de recharge
+        val explodedResult = explodedDates.crossJoin(rechargesDF)
+          .withColumn("year", year(col("day")))
+          .withColumn("month", expr("printf('%02d', month(day))"))
+          .withColumn("day", date_format(col("day"), "yyyyMMdd"))
 
         val df1 = dataFrame
             .groupBy("type_recharge", "year", "month", "day")
@@ -284,7 +309,7 @@ object utils {
             )
             .drop("numero", "formule", "montant_in", "montant_zebra", "ecart")
 
-        df1
+        val df2 = df1
           .withColumn("ecart_cnt",
             when(col("in_cnt") >= col("ze_cnt"), col("in_cnt") - col("ze_cnt")).otherwise(-(col("ze_cnt") - col("in_cnt"))))
           .withColumn("ecart_mnt",
@@ -301,11 +326,38 @@ object utils {
           .withColumn("perc_ze",
             ((col("nombre_missing_zebra") / col("in_cnt")) * 100)
           )
-          .select("type_recharge", "in_mnt", "ze_mnt", "ecart_mnt", "in_cnt", "ze_cnt", "ecart_cnt",
-            "nombre_match", "perc_match", "nombre_mismatch", "perc_mismatch", "nombre_missing_in", "perc_in", "nombre_missing_zebra", "perc_ze", "year", "month", "day")
           .na.drop(Seq("year", "month", "day"))
+
+
+        val dfJoin = explodedResult.join(df2, Seq("type_recharge", "day"), "left").select(
+          explodedResult("type_recharge")     ,
+          df2("in_mnt")                       ,
+          df2("ze_mnt")                       ,
+          df2("ecart_mnt")                    ,
+          df2("in_cnt")                       ,
+          df2("ze_cnt")                       ,
+          df2("ecart_cnt")                    ,
+          df2("nombre_match")                 ,
+          df2("perc_match")                   ,
+          df2("nombre_mismatch")              ,
+          df2("perc_mismatch")                ,
+          df2("nombre_missing_in")            ,
+          df2("perc_in")                      ,
+          df2("nombre_missing_zebra")         ,
+          df2("perc_ze")                      ,
+          explodedResult("year")              ,
+          explodedResult("month")             ,
+          explodedResult("day")
+        )
+
+        dfJoin
+          .na.fill(0, Seq("type_recharge", "in_mnt", "ze_mnt", "ecart_mnt", "in_cnt", "ze_cnt", "ecart_cnt",
+          "nombre_match", "perc_match", "nombre_mismatch", "perc_mismatch", "nombre_missing_in", "perc_in", "nombre_missing_zebra", "perc_ze"))
           .orderBy("year", "month", "day")
+
       }
+
+
 
 
 

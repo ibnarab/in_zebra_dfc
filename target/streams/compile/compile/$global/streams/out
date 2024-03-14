@@ -1,4 +1,4 @@
-[0m[[0m[33mwarn[0m] [0m[0mC:\Users\DIOP028957\IdeaProjects\in_zebra\src\main\scala\fonctions\utils.scala:287:19: a pure expression does nothing in statement position; you may be omitting necessary parentheses[0m
-[0m[[0m[33mwarn[0m] [0m[0m                  listeDates[0m
-[0m[[0m[33mwarn[0m] [0m[0m                  ^[0m
-[0m[[0m[33mwarn[0m] [0m[0mone warning found[0m
+[0m[[0m[31merror[0m] [0m[0mC:\Users\DIOP028957\IdeaProjects\in_zebra\src\main\scala\fonctions\utils.scala:6:8: expr is renamed twice[0m
+[0m[[0m[31merror[0m] [0m[0mimport org.apache.spark.sql.functions.{sequence, explode, lit, date_format, year, month, expr, size, col, expr, _}[0m
+[0m[[0m[31merror[0m] [0m[0m       ^[0m
+[0m[[0m[31merror[0m] [0m[0mone error found[0m
