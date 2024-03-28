@@ -3,9 +3,7 @@ package fonctions
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.expressions.Window
 import constants.spark
-import org.apache.spark.sql.functions.{sequence, explode, lit, date_format, year, month, expr, size, col, _}
-import java.sql.Date
-import java.text.SimpleDateFormat
+import org.apache.spark.sql.functions.{lit, date_format, year, month, size, col, _}
 
 
 
@@ -268,20 +266,13 @@ object utils {
 
 
 
-  def reconciliationAgregee(dataFrame: DataFrame, debut: String, fin: String): DataFrame = {
+  def reconciliationAgregee(dataFrame: DataFrame, date: String): DataFrame = {
 
-        // Convertir les chaînes de date en objets Date
-        val dateFormat = new SimpleDateFormat("yyyyMMdd")
-        val debutStr = debut
-        val finStr = fin
-        val date_debut = new Date(dateFormat.parse(debutStr).getTime())
-        val date_fin = new Date(dateFormat.parse(finStr).getTime())
+          val rows = date.split("\n").toSeq
 
+          // Convertir la séquence en DataFrame avec une seule colonne
+          val df = spark.createDataFrame(rows.map(Tuple1.apply)).toDF("day")
 
-
-
-        val toutesLesDates = spark.range(1).select(sequence(lit(date_debut), lit(date_fin), expr("INTERVAL 1 DAY")).as("dates"))
-        val explodedDates = toutesLesDates.select(explode(col("dates")).as("day"))
 
         // Liste des types de recharge
         val recharges = List("Recharge Orange Money Distri", "Recharge IAH", "Recharge Orange Money O&M", "Recharge Orange Money S2S", "Recharge Wave", "Recharge C2S", "Recharge Carte", "Seddo Corporate")
@@ -289,11 +280,10 @@ object utils {
         // Créer un DataFrame pour les types de recharge avec un identifiant
         val rechargesDF = spark.createDataFrame(recharges.zipWithIndex).toDF("type_recharge", "recharge_id")
 
-        // Joindre chaque date avec chaque type de recharge
-        val explodedResult = explodedDates.crossJoin(rechargesDF)
-          .withColumn("year", year(col("day")))
-          .withColumn("month", expr("printf('%02d', month(day))"))
-          .withColumn("day", date_format(col("day"), "yyyyMMdd"))
+        // Joindre la date avec chaque type de recharge
+        val explodedResult = df.crossJoin(rechargesDF)
+          .withColumn("year", substring(col("day"), 1, 4))
+          .withColumn("month", substring(col("day"), 5, 2))
 
         val df1 = dataFrame
             .groupBy("type_recharge", "year", "month", "day")
@@ -356,6 +346,7 @@ object utils {
           .orderBy("year", "month", "day")
 
       }
+
 
 
 

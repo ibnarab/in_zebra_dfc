@@ -1,17 +1,7 @@
 package fonctions
 
-import java.util.Calendar
 
 object schema_chemin_hdfs {
-
-  def anneeMoisPrecedent(): String = {
-    val calendar = Calendar.getInstance()
-    calendar.add(Calendar.MONTH, -1)
-    val year = calendar.get(Calendar.YEAR)
-    val month = calendar.get(Calendar.MONTH) + 1
-    val formattedMonth = if (month < 10) s"0$month" else month.toString
-    s"$year-$formattedMonth"
-  }
 
   val table_read_in_detail = "refined_recharge.recharge_in_detail"
   val table_read_detaillee = "refined_recharge.recharge_detaillee"

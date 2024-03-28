@@ -9,31 +9,26 @@ import org.apache.hadoop.fs.{FileSystem, Path}
 
 object mail {
 
-  def partitionMonth(valeur: String): String = {
-    valeur.substring(0, 7)
-  }
 
-
-
-  def sendMail(partMonth: String) = {
+  def sendMail(partDay: String) = {
     val multipart = new MimeMultipart()
 
     val messageBodyPart = new MimeBodyPart()
 
     val fs = FileSystem.get(constants.spark.sparkContext.hadoopConfiguration)
-    val stream = fs.open(new Path(s"hdfs://bigdata/dlk/osn/refined/reconciliation_recharge_in_zebra.$partMonth.xlsx"))
+    val stream = fs.open(new Path(s"hdfs://bigdata/dlk/osn/refined/reconciliation_recharge_in_zebra/reconciliation_recharge_in_zebra.$partDay.xlsx"))
     messageBodyPart.setDataHandler(new DataHandler(new ByteArrayDataSource(stream,"application/vnd.ms-excel")))
-    messageBodyPart.setFileName(s"reconciliation_recharge_in_zebra.$partMonth.xlsx")
+    messageBodyPart.setFileName(s"reconciliation_recharge_in_zebra.$partDay.xlsx")
 
 
     multipart.addBodyPart(messageBodyPart)
-    val objet = s"RECONCILIATION RECHARGE IN ZEBRA  $partMonth"
+    val objet = s"RECONCILIATION RECHARGE IN ZEBRA  $partDay"
     println(objet)
-    val  corps = s"Bonjour , \nCi-joint les reportings :\n* Reconciliation Recharge par jour et par type de recharge.\n* reconciliation_recharge_in_zebra $partMonth \n\nCordialement, \nL'équipe DBM"
+    val  corps = s"Bonjour , \nCi-joint les reportings :\n* Reconciliation Recharge par jour et par type de recharge.\n* reconciliation_recharge_in_zebra $partDay \n\nCordialement, \nL'équipe DBM"
     println(corps)
 
-    //val RECEIVER = "mouhamedibnarab.diop@orange-sonatel.com,ndeyerokhaya.dia@orange-sonatel.com,mohamed.diene@orange-sonatel.com,ababacar.diouf@orange-sonatel.com,aminatamacky.tall@orange-sonatel.com, cheikhmarieteuw.diop@orange-sonatel.com"
-    val RECEIVER = "mouhamedibnarab.diop@orange-sonatel.com"
+    val RECEIVER = "mouhamedibnarab.diop@orange-sonatel.com,ndeyerokhaya.dia@orange-sonatel.com,mohamed.diene@orange-sonatel.com,ababacar.diouf@orange-sonatel.com,aminatamacky.tall@orange-sonatel.com,cheikhmarieteuw.diop@orange-sonatel.com,team_fra@orange-sonatel.com"
+    //val RECEIVER = "mouhamedibnarab.diop@orange-sonatel.com"
     println(RECEIVER)
     val SENDER = "reconciliation_recharge_in_zebrag@orange-sonatel.com"
     println(SENDER)
